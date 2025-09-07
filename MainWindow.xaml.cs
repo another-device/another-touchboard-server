@@ -93,7 +93,7 @@ namespace AnotherTouchboard
                     while (!_cancellationTokenSource.Token.IsCancellationRequested)
                     {
                         var client = await _tcpListener.AcceptTcpClientAsync(_cancellationTokenSource.Token);
-                        var clientIp = ((IPEndPoint)client.Client.RemoteEndPoint).Address.ToString();
+                        var clientIp = ((IPEndPoint)client.Client.RemoteEndPoint!).Address.ToString();
 
                         Dispatcher.Invoke(() =>
                         {
@@ -176,7 +176,17 @@ namespace AnotherTouchboard
                 }
 
                 // 查找对应的虚拟键码
-                if (!_keyCodeMap.TryGetValue(keyCode, out ushort virtualKeyCode))
+                // if (!_keyCodeMap.TryGetValue(keyCode, out ushort virtualKeyCode))
+                // {
+                //     AddLog($"未知的按键代码: {keyCode}");
+                //     return;
+                // }
+                ushort virtualKeyCode = 0;
+                if (ushort.TryParse(keyCode, out ushort vk))
+                {
+                    virtualKeyCode = vk;
+                }
+                else
                 {
                     AddLog($"未知的按键代码: {keyCode}");
                     return;
@@ -212,7 +222,7 @@ namespace AnotherTouchboard
                 {
                     _udpClient = new UdpClient();
                     _udpClient.EnableBroadcast = true;
-                    IPEndPoint broadcastEndPoint = new IPEndPoint(IPAddress.Broadcast, 8889);
+                    IPEndPoint broadcastEndPoint = new(IPAddress.Parse("192.168.0.255"), 8889);
 
                     // 获取本机IP地址
                     var localIp = GetLocalIPAddress();
@@ -222,7 +232,7 @@ namespace AnotherTouchboard
                         return;
                     }
 
-                    string message = $"AnotherTouchboardServer;{localIp};8889";
+                    string message = $"AnotherTouchboardServer;{localIp};8888";
                     byte[] data = Encoding.UTF8.GetBytes(message);
 
                     Dispatcher.Invoke(() => AddLog($"开始在局域网广播 (IP: {localIp}, 端口: 8889)"));
@@ -245,7 +255,7 @@ namespace AnotherTouchboard
             }, _cancellationTokenSource.Token);
         }
 
-        private string GetLocalIPAddress()
+        private static string GetLocalIPAddress()
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());
             foreach (var ip in host.AddressList)
@@ -255,7 +265,7 @@ namespace AnotherTouchboard
                     return ip.ToString();
                 }
             }
-            return null;
+            return string.Empty;
         }
 
         private void AddLog(string message)
