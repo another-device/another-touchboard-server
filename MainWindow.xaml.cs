@@ -16,9 +16,10 @@ namespace AnotherTouchboard
         private TcpListener _tcpListener;
         private UdpClient _udpClient;
         private CancellationTokenSource _cancellationTokenSource;
-        private Dictionary<string, TcpClient> _connectedClients = new Dictionary<string, TcpClient>();
-        private ObservableCollection<string> _pressedKeys = new ObservableCollection<string>();
-        private ObservableCollection<string> _connectedClientsList = new ObservableCollection<string>();
+        private Dictionary<string, TcpClient> _connectedClients = [];
+        private Dictionary<string, DateTime> _clientLastHeartbeat = [];
+        private ObservableCollection<string> _pressedKeys = [];
+        private ObservableCollection<string> _connectedClientsList = [];
         private string _logText = "";
 
         public ObservableCollection<string> PressedKeys => _pressedKeys;
@@ -52,6 +53,9 @@ namespace AnotherTouchboard
             StartUdpBroadcaster();
 
             AddLog("程序已启动，等待连接...");
+
+            // 启动心跳检测定时器
+            StartHeartbeatChecker();
         }
 
         private void StartTcpServer()
@@ -75,6 +79,7 @@ namespace AnotherTouchboard
                             AddLog($"客户端 {clientIp} 已连接");
                             _connectedClients[clientIp] = client;
                             _connectedClientsList.Add(clientIp);
+                            _clientLastHeartbeat[clientIp] = DateTime.Now;
                         });
 
                         // 处理客户端消息
@@ -106,6 +111,13 @@ namespace AnotherTouchboard
                         string data = Encoding.UTF8.GetString(buffer, 0, bytesRead).Trim();
                         Dispatcher.Invoke(() => AddLog($"收到来自 {clientIp} 的数据: {data}"));
 
+                        // 心跳包处理
+                        if (data == "<3")
+                        {
+                            _clientLastHeartbeat[clientIp] = DateTime.Now;
+                            continue;
+                        }
+
                         // 解析数据并处理按键
                         ProcessKeyData(data);
                     }
@@ -126,6 +138,7 @@ namespace AnotherTouchboard
                     AddLog($"客户端 {clientIp} 已断开连接");
                     _connectedClients.Remove(clientIp);
                     _connectedClientsList.Remove(clientIp);
+                    _clientLastHeartbeat.Remove(clientIp);
                 });
                 client.Close();
             }
@@ -150,12 +163,6 @@ namespace AnotherTouchboard
                     return;
                 }
 
-                // 查找对应的虚拟键码
-                // if (!_keyCodeMap.TryGetValue(keyCode, out ushort virtualKeyCode))
-                // {
-                //     AddLog($"未知的按键代码: {keyCode}");
-                //     return;
-                // }
                 ushort virtualKeyCode = 0;
                 if (ushort.TryParse(keyCode, out ushort vk))
                 {
@@ -264,6 +271,41 @@ namespace AnotherTouchboard
         }
 
         #region 按键模拟 (使用SendInput)
+
+        // 心跳检测定时器
+        private void StartHeartbeatChecker()
+        {
+            Task.Run(async () =>
+            {
+                while (!_cancellationTokenSource.Token.IsCancellationRequested)
+                {
+                    List<string> toRemove = [];
+                    var now = DateTime.Now;
+                    foreach (var kvp in _clientLastHeartbeat)
+                    {
+                        if ((now - kvp.Value).TotalSeconds > 60)
+                        {
+                            toRemove.Add(kvp.Key);
+                        }
+                    }
+                    foreach (var clientIp in toRemove)
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            AddLog($"客户端 {clientIp} 心跳超时，主动断开");
+                            if (_connectedClients.TryGetValue(clientIp, out var client))
+                            {
+                                client.Close();
+                            }
+                            _connectedClients.Remove(clientIp);
+                            _connectedClientsList.Remove(clientIp);
+                            _clientLastHeartbeat.Remove(clientIp);
+                        });
+                    }
+                    await Task.Delay(2000, _cancellationTokenSource.Token);
+                }
+            }, _cancellationTokenSource.Token);
+        }
         [StructLayout(LayoutKind.Sequential)]
         private struct INPUT
         {
