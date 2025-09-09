@@ -77,7 +77,14 @@ public class TcpServer
                     continue;
                 }
 
-                DataReceived?.Invoke(clientIp, data);
+                if (!string.IsNullOrEmpty(data))
+                {
+                    var split_data = data.TrimEnd('/').Split('/');
+                    foreach (string s in split_data)
+                    {
+                        DataReceived?.Invoke(clientIp, s);
+                    }
+                }
             }
         }
         catch (OperationCanceledException)

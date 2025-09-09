@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Threading;
@@ -54,32 +55,32 @@ namespace AnotherTouchboard.Views
                 // 订阅UDP事件
                 _udpBroadcaster.BoardcastSent += (localIp, localPort) =>
                 {
-                    AddLog($"开始在局域网广播 (IP: {localIp}, 端口: {localPort})");
+                    AddLog($"Starting LAN broadcast (IP: {localIp}, Port: {localPort})");
                 };
                 _udpBroadcaster.Start();
             };
             _tcpServer.ClientConnected += clientIp =>
             {
-                AddLog($"客户端 {clientIp} 已连接");
+                AddLog($"Client {clientIp} has connected");
                 _connectedClientsList.Add(clientIp);
             };
             _tcpServer.ClientDisconnected += ip =>
             {
-                AddLog($"客户端 {ip} 已断开");
+                AddLog($"Client {ip} has disconnected");
                 _connectedClientsList.Remove(ip);
             };
             _tcpServer.DataReceived += (clientIp, data) =>
             {
-                AddLog($"收到来自 {clientIp} 的数据: {data}");
+                AddLog($"Received data from {clientIp}: [{data}]");
                 ProcessKeyData(data);
             };
             _tcpServer.HeartbeatTimeout += (ip) =>
             {
-                AddLog($"客户端 {ip} 心跳超时");
+                AddLog($"Client {ip} heartbeat timeout");
             };
 
             // 启动UDP和TCP服务
-            AddLog("程序已启动，等待连接...");
+            AddLog("Program started, waiting for connections...");
             _tcpServer.Start();
         }
 
@@ -91,14 +92,14 @@ namespace AnotherTouchboard.Views
                 var parts = data.Split(',');
                 if (parts.Length != 2)
                 {
-                    AddLog($"无效的数据格式: {data}");
+                    AddLog($"Invalid data format: {data}");
                     return;
                 }
 
                 string keyCode = parts[0].Trim();
                 if (!ushort.TryParse(parts[1].Trim(), out ushort pressedFlag))
                 {
-                    AddLog($"无效的按键状态: {parts[1]}");
+                    AddLog($"Invalid key state: {parts[1]}");
                     return;
                 }
                 bool isPressed = pressedFlag == 1;
@@ -110,7 +111,7 @@ namespace AnotherTouchboard.Views
                 }
                 else
                 {
-                    AddLog($"未知的按键代码: {keyCode}");
+                    AddLog($"Unknown key code: {keyCode}");
                     return;
                 }
 
@@ -132,20 +133,30 @@ namespace AnotherTouchboard.Views
             }
             catch (Exception ex)
             {
-                AddLog($"处理按键数据错误: {ex.Message}");
+                AddLog($"Error processing key data: {ex.Message}");
             }
         }
 
         public void AddLog(string message)
         {
             string logEntry = $"[{DateTime.Now:HH:mm:ss}] {message}\n";
-            LogText = logEntry + LogText; // 新日志添加到顶部
+            LogText = logEntry + LogText;
 
             // 限制日志长度，防止内存溢出
             if (LogText.Length > 10000)
             {
                 LogText = LogText.Substring(0, 10000);
             }
+        }
+
+        private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = e.Uri.ToString(),
+                UseShellExecute = true
+            });
+            e.Handled = true;
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:AnotherTouchboard"
         mc:Ignorable="d"
-        Title="虚拟键盘接收端" Height="500" Width="800" Closing="Window_Closing">
+        Title="Another Touchboard" Height="500" Width="800" Closing="Window_Closing">
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -18,11 +18,14 @@
         </Grid.ColumnDefinitions>
 
         <!-- 标题 -->
-        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" 
-                   Text="虚拟键盘接收端" 
-                   FontSize="18" 
-                   FontWeight="Bold" 
-                   Margin="0,0,0,10"/>
+        <TextBlock Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,0,0,10">
+            Find Me At:
+            <Hyperlink NavigateUri="https://github.com/another-device/another-touchboard-server" 
+                    RequestNavigate="Hyperlink_RequestNavigate"
+                    Foreground="Green">
+                another-device/another-touchboard-server@github
+            </Hyperlink>
+        </TextBlock>
 
         <!-- 主内容区域 -->
         <Grid Grid.Row="1" Grid.Column="0">
@@ -37,7 +40,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     
-                    <TextBlock Text="日志" 
+                    <TextBlock Text="Log" 
                                FontSize="14" 
                                FontWeight="Medium" 
                                Margin="5"/>
@@ -68,7 +71,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     
-                    <TextBlock Text="当前按下的键" 
+                    <TextBlock Text="Pressed Keys" 
                                FontSize="14" 
                                FontWeight="Medium" 
                                Margin="5"/>
@@ -87,7 +90,7 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     
-                    <TextBlock Text="连接的客户端" 
+                    <TextBlock Text="Connected Clients" 
                                FontSize="14" 
                                FontWeight="Medium" 
                                Margin="5"/>
